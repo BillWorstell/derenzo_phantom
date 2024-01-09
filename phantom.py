@@ -3,10 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpp
 
-from derenzo_log import export_to_G4macclass DerenzoPhantom(object):
+from derenzo_log import export_to_G4macclass
+
+class DerenzoPhantom(object):
     """
     Describes a cylindrical Derenzo phantom.
     """
+    
     # Always subdivided into six sections, 60 degrees per section
     _num_sections = 6
     def __init__(self, radius, well_separations, cyl_height=0, unit="mm"):
