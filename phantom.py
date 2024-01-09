@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpp
 
-from derenzo_log import export_to_G4macclass
+from derenzo_log import export_to_G4mac
 
 class DerenzoPhantom(object):
     """
