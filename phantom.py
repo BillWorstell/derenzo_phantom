@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpp
+import icecream as ic
 
 from derenzo_log import export_to_G4mac
 
