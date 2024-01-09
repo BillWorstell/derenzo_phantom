@@ -3,9 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpp
 
-from derenzo_log import export_to_G4mac
-
-class DerenzoPhantom(object):
+from derenzo_log import export_to_G4macclass DerenzoPhantom(object):
     """
     Describes a cylindrical Derenzo phantom.
     """
@@ -16,7 +14,7 @@ class DerenzoPhantom(object):
         Create a Derenzo phantom based on the input parameters.
 
         A circle with radius is partitioned into six equal sections.
-        Each section is then populated with circular 'wells' that have a 
+        Each section is then populated with circular 'wells' that have a
         diameter and spacing defined by well_separations.
 
         Note the kwargs 'cyl_height' and 'unit' are only relevant if phantom is
@@ -29,7 +27,7 @@ class DerenzoPhantom(object):
 
         well_separations : array_like, 1D, with len == 6
             A sequence specifying the well diameters and separations in each
-            of the six sections. 
+            of the six sections.
             Sequence must contain 6 numeric elements.
 
         cyl_height : float, default: 0
@@ -53,11 +51,20 @@ class DerenzoPhantom(object):
 
         # Define sections
         self.sections = []
-        for well_sep, rot_angle in zip(self.well_seps, 
+        for well_sep, rot_angle in zip(self.well_seps,
                                        np.arange(0, 360., 360. / self._num_sections)):
             section = DerenzoSection(self.radius, well_sep)
             section.apply_rotation(rot_angle)
             self.sections.append(section)
+
+        # Initialize mask
+        self.mask=np.zeros((1024, 1024)).flatten()
+        self.mask_scale=(2.*self.radius)/1024.
+        self.xlinspace=np.linspace(-self.radius, self.radius, 1024)
+        self.ylinspace=np.linspace(-self.radius, self.radius, 1024)
+        xgrid,ygrid = np.meshgrid(self.xlinspace, self.ylinspace)
+        self.xgrid=xgrid.flatten()
+        self.ygrid=ygrid.flatten()
 
         # Initialize graphic (values hard-coded for now)
         self.fig = plt.figure(figsize=(6, 6))           # Aspect ratio = 1
@@ -70,7 +77,10 @@ class DerenzoPhantom(object):
 
         # Plot well locations from all sections of the phantom
         for section in self.sections:
-            section.plot_wells(self.fig, self.ax)
+            SectorMask=section.mask_and_plot_wells(self.fig, self.ax)
+            ic(SectorMask.sum())
+            self.mask=self.mask+SectorMask
+            ic(self.mask.sum())
 
     @property
     def area(self):
@@ -87,6 +97,9 @@ class DerenzoPhantom(object):
         self.fig.canvas.draw()
         plt.show()
 
+    def mask(self):
+        return self.mask.reshape((1024,1024))
+
     def export_to_G4gps_macro(self, fname, num_events, gamma_en,
                               event_mode='equal_activity'):
         """
@@ -99,7 +112,7 @@ class DerenzoPhantom(object):
                              well is the total number of events divided by
                              the area ratio of the cell.
          - 'equal_counts'  : Divides the total number of events by the number
-                             of wells. Usefull for accentuating smaller 
+                             of wells. Usefull for accentuating smaller
                              features for testing reconstruction.
         """
         with open(fname, 'w') as fh:
@@ -138,7 +151,15 @@ class DerenzoSection(object):
         self.place_wells_in_section()
         # Location for section label
         self.label_xy = np.array((0, -1.1 * self.R))
-
+        # Mask for section
+        # Initialize mask
+        self.mask=np.zeros((1024, 1024)).flatten()
+        self.mask_scale=(2.*self.R)/1024.
+        self.xlinspace=np.linspace(-self.R, self.R, 1024)
+        self.ylinspace=np.linspace(-self.R, self.R, 1024)
+        xgrid,ygrid = np.meshgrid(self.xlinspace, self.ylinspace)
+        self.xgrid=xgrid.flatten()
+        self.ygrid=ygrid.flatten()
     @property
     def row_height(self):
         return self.well_sep * np.sqrt(3)
@@ -200,7 +221,7 @@ class DerenzoSection(object):
         # Rotate label location
         self.label_xy = np.dot(self.label_xy, rot_mat)
 
-    def plot_wells(self, fig, ax):
+    def mask_and_plot_wells(self, fig, ax):
         """
         Plot the well pattern for the given section on the input figure and
         axis handles.
@@ -208,16 +229,33 @@ class DerenzoSection(object):
         # Plot wells
         for xy in self.locs:
             cyl = mpp.Circle(xy, radius=self.r, color="green", alpha=0.5)
+            # mask wells
+            where = np.where((self.xgrid-xy[0])**2 + (self.ygrid-xy[1])**2 <= self.R**2)
+            self.mask[where] = 1
+            # Plot
             ax.add_patch(cyl)
+
         # Add label
         x, y = self.label_xy
         ax.text(x, y, self.label, horizontalalignment='center',
                 verticalalignment='center', fontsize=16)
 
+        return(self.mask)
+
 if __name__ == "__main__":
     radius = 37.0
     well_seps = (8.0, 6.0, 5.0, 4.0, 3.0, 2.0)
+    #
+    # Initialize mask
+    mask=np.zeros((1024, 1024))
+    xlinspace=np.linspace(-radius, radius, 1024)
+    ylinspace=np.linspace(-radius, radius, 1024)
+    xgrid,ygrid = np.meshgrid(xlinspace, ylinspace)
+    xgrid=xgrid.flatten()
+    ygrid=ygrid.flatten()
+
     my_phantom = DerenzoPhantom(radius, well_seps)
     my_phantom.show()
-    my_phantom.export_to_G4gps_macro('derenzo.mac', 1e6, 661.657,
-                                     event_mode='equal_activity')
+    my_mask=my_phantom.mask
+    ic(my_mask.sum())
+    #
