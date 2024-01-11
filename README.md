@@ -1,4 +1,4 @@
-#Modified to generate 2D 1024x1024 mask of phantom
+Modified to generate 2D 1024x1024 mask of phantom
 
 iphantom1.ipynb is a playground, with subroutines spelled out explicitly for modification as desired
 
